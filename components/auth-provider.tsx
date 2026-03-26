@@ -11,6 +11,8 @@ import {
 } from "react"
 import type { User } from "@supabase/supabase-js"
 
+import { supabaseRealtime } from "@/lib/supabase"
+
 interface AuthContextValue {
   displayName: string | null
   isLoading: boolean
@@ -85,6 +87,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isMounted = false
     }
   }, [])
+
+  useEffect(() => {
+    if (!accessToken) {
+      return
+    }
+
+    supabaseRealtime.realtime.setAuth(accessToken)
+  }, [accessToken])
 
   const value = useMemo<AuthContextValue>(
     () => ({
