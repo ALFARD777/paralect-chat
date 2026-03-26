@@ -11,6 +11,7 @@ ChatGPT-like chatbot built with Next.js, TanStack Query, Tailwind, shadcn/ui, Su
 - PDF and TXT document uploads with extracted text used as chat context
 - Realtime chat and message sync across tabs
 - Drag and drop, paste, and file picker support for attachments
+- 2 system-depended themes (dark and light)
 
 ## Screenshots
 
