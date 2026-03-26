@@ -14,13 +14,11 @@ ChatGPT-like chatbot built with Next.js, TanStack Query, Tailwind, shadcn/ui, Su
 
 ## Screenshots
 
-```md
 ![Chat UI](./public/readme/chat.png)
 ![Attachments](./public/readme/attachments.png)
 ![Drag'n'Drop](./public/readme/dragndrop.png)
 ![Authorization](./public/readme/auth.png)
 ![Mobile](./public/readme/mobile.png)
-```
 
 ## Stack
 
