@@ -54,70 +54,85 @@ export default function History({
   })
 
   useEffect(() => {
-    if (!user?.id) {
+    if (!user?.id || !accessToken) {
       return
     }
 
-    const channel = supabaseRealtime
-      .channel(`chats:${user.id}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "INSERT",
-          schema: "public",
-          table: "chats",
-          filter: `user_id=eq.${user.id}`,
-        },
-        (payload) => {
-          const newChat = payload.new as IChat
+    let isActive = true
+    let channel: ReturnType<typeof supabaseRealtime.channel> | null = null
 
-          queryClient.setQueryData<IChat[]>(["chats", user.id], (current) => {
-            const items = current ?? []
+    void supabaseRealtime.realtime.setAuth(accessToken).then(() => {
+      if (!isActive) {
+        return
+      }
 
-            const alreadyExists = items.some((chat) => chat.id === newChat.id)
+      channel = supabaseRealtime
+        .channel(`chats:${user.id}`)
+        .on(
+          "postgres_changes",
+          {
+            event: "INSERT",
+            schema: "public",
+            table: "chats",
+            filter: `user_id=eq.${user.id}`,
+          },
+          (payload) => {
+            const newChat = payload.new as IChat
 
-            if (alreadyExists) {
-              return items
-            }
+            queryClient.setQueryData<IChat[]>(["chats", user.id], (current) => {
+              const items = current ?? []
 
-            return [newChat, ...items].sort(
-              (a, b) =>
-                new Date(b.updated_at).getTime() -
-                new Date(a.updated_at).getTime()
-            )
-          })
-        }
-      )
-      .on(
-        "postgres_changes",
-        {
-          event: "UPDATE",
-          schema: "public",
-          table: "chats",
-          filter: `user_id=eq.${user.id}`,
-        },
-        (payload) => {
-          const updatedChat = payload.new as IChat
+              const alreadyExists = items.some((chat) => chat.id === newChat.id)
 
-          queryClient.setQueryData<IChat[]>(["chats", user.id], (current) => {
-            const items = current ?? []
+              if (alreadyExists) {
+                return items
+              }
 
-            return items
-              .map((chat) => (chat.id === updatedChat.id ? updatedChat : chat))
-              .sort(
+              return [newChat, ...items].sort(
                 (a, b) =>
                   new Date(b.updated_at).getTime() -
                   new Date(a.updated_at).getTime()
               )
-          })
-        }
-      )
-      .subscribe()
+            })
+          }
+        )
+        .on(
+          "postgres_changes",
+          {
+            event: "UPDATE",
+            schema: "public",
+            table: "chats",
+            filter: `user_id=eq.${user.id}`,
+          },
+          (payload) => {
+            const updatedChat = payload.new as IChat
+
+            queryClient.setQueryData<IChat[]>(["chats", user.id], (current) => {
+              const items = current ?? []
+
+              return items
+                .map((chat) =>
+                  chat.id === updatedChat.id ? updatedChat : chat
+                )
+                .sort(
+                  (a, b) =>
+                    new Date(b.updated_at).getTime() -
+                    new Date(a.updated_at).getTime()
+                )
+            })
+          }
+        )
+        .subscribe()
+    })
 
     return () => {
-      void supabaseRealtime.removeChannel(channel)
+      isActive = false
+
+      if (channel) {
+        void supabaseRealtime.removeChannel(channel)
+      }
     }
-  }, [queryClient, user?.id])
+  }, [accessToken, queryClient, user?.id])
 
   useEffect(() => {
     if (activeChatId) {

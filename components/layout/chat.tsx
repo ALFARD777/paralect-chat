@@ -108,46 +108,59 @@ export default function Chat({
   })
 
   useEffect(() => {
-    if (!activeChatId || activeChatId === "draft") {
+    if (!activeChatId || activeChatId === "draft" || !accessToken) {
       return
     }
 
-    const channel = supabaseRealtime
-      .channel(`messages:${activeChatId}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "INSERT",
-          schema: "public",
-          table: "messages",
-          filter: `chat_id=eq.${activeChatId}`,
-        },
-        () => {
-          void queryClient.invalidateQueries({
-            queryKey: ["messages", activeChatId],
-          })
-        }
-      )
-      .on(
-        "postgres_changes",
-        {
-          event: "INSERT",
-          schema: "public",
-          table: "message_attachments",
-          filter: `chat_id=eq.${activeChatId}`,
-        },
-        () => {
-          void queryClient.invalidateQueries({
-            queryKey: ["messages", activeChatId],
-          })
-        }
-      )
-      .subscribe()
+    let isActive = true
+    let channel: ReturnType<typeof supabaseRealtime.channel> | null = null
+
+    void supabaseRealtime.realtime.setAuth(accessToken).then(() => {
+      if (!isActive) {
+        return
+      }
+
+      channel = supabaseRealtime
+        .channel(`messages:${activeChatId}`)
+        .on(
+          "postgres_changes",
+          {
+            event: "INSERT",
+            schema: "public",
+            table: "messages",
+            filter: `chat_id=eq.${activeChatId}`,
+          },
+          () => {
+            void queryClient.invalidateQueries({
+              queryKey: ["messages", activeChatId],
+            })
+          }
+        )
+        .on(
+          "postgres_changes",
+          {
+            event: "INSERT",
+            schema: "public",
+            table: "message_attachments",
+            filter: `chat_id=eq.${activeChatId}`,
+          },
+          () => {
+            void queryClient.invalidateQueries({
+              queryKey: ["messages", activeChatId],
+            })
+          }
+        )
+        .subscribe()
+    })
 
     return () => {
-      void supabaseRealtime.removeChannel(channel)
+      isActive = false
+
+      if (channel) {
+        void supabaseRealtime.removeChannel(channel)
+      }
     }
-  }, [activeChatId, queryClient])
+  }, [accessToken, activeChatId, queryClient])
 
   const messages: IChatMessage[] = (messagesQuery.data ?? []).map((m) => ({
     id: m.id,
